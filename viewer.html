@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FBX Models Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+        }
+        #container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 40px;
+            border-radius: 10px;
+        }
+        .loaded {
+            display: none;
+        }
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        #scaleControl {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        #scaleControl input {
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="loading">Loading Models...</div>
+    <div id="info">
+        <h3 style="margin-top: 0;">FBX Models Viewer</h3>
+        <div id="modelList">Loading models...</div>
+    </div>
+    <div id="controls">
+        <strong>Controls:</strong><br>
+        Left Mouse: Rotate<br>
+        Right Mouse: Pan<br>
+        Scroll: Zoom<br>
+        <button id="resetView" style="margin-top: 10px; padding: 5px 10px;">Reset View</button>
+        <button id="toggleGrid" style="margin-top: 5px; padding: 5px 10px;">Toggle Grid</button>
+        <button id="toggleAxes" style="margin-top: 5px; padding: 5px 10px;">Toggle Axes</button>
+    </div>
+
+    <div id="scaleControl">
+        <strong>Monitor Scale:</strong><br>
+        <input type="range" id="monitorScale" min="1" max="20" value="5" step="0.5">
+        <span id="scaleValue">5x</span><br>
+        <button id="applyScale" style="margin-top: 5px; padding: 5px 10px;">Apply Scale</button>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a1a); // Dark background
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(
+            60,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            10000  // Increased far plane to see distant objects
+        );
+        camera.position.set(10, 10, 10); // Position camera to see the models
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 1;
+        controls.maxDistance = 1000;
+        controls.target.set(0, 0, 0); // Look at origin
+
+        // Lighting - stronger lighting to see models better
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+        scene.add(ambientLight);
+
+        const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight1.position.set(10, 20, 10);
+        directionalLight1.castShadow = true;
+        directionalLight1.shadow.camera.left = -50;
+        directionalLight1.shadow.camera.right = 50;
+        directionalLight1.shadow.camera.top = 50;
+        directionalLight1.shadow.camera.bottom = -50;
+        scene.add(directionalLight1);
+
+        const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.6);
+        directionalLight2.position.set(-10, 10, -10);
+        scene.add(directionalLight2);
+
+        const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.4);
+        directionalLight3.position.set(0, -10, 0);
+        scene.add(directionalLight3);
+
+        // Grid (larger and more visible)
+        const gridHelper = new THREE.GridHelper(200, 100, 0x00ff00, 0x444444);
+        scene.add(gridHelper);
+
+        // Axes (larger to see better)
+        const axesHelper = new THREE.AxesHelper(50);
+        scene.add(axesHelper);
+
+        // FBX files to load
+        const fbxFiles = [
+            'Main_Monitor_1.fbx',
+            'Monitor_2.fbx',
+            'Monitor_3.fbx',
+            'Monitor_4.fbx',
+            'Monitor_5.fbx',
+            'Monitor_6.fbx',
+            'Monitor_7.fbx',
+            'Room_Window.fbx'
+        ];
+
+        const loadedModels = [];
+        let loadedCount = 0;
+        let currentMonitorScale = 5;
+
+        // For click detection and camera animation
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let mainMonitorObject = null;
+        let isZoomedIn = false;
+        let originalCameraPosition = new THREE.Vector3();
+        let originalControlsTarget = new THREE.Vector3();
+
+        // FBX Loader
+        const loader = new FBXLoader();
+        const modelGroup = new THREE.Group();
+        scene.add(modelGroup);
+
+        // Room layout configuration
+        // All models at origin with rotation 0,0,0 and scale 1,1,1
+        const roomLayout = {
+            'Room_Window.fbx': { x: 0, y: 0, z: 0, rotX: 0, rotY: 0, rotZ: 0, scale: 1, isRoom: true },
+            'Main_Monitor_1.fbx': { x: 0, y: 0, z: 0, rotX: 0, rotY: 0, rotZ: 0, scale: 1 },
+            'Monitor_2.fbx': { x: 0, y: 0, z: 0, rotX: 0, rotY: 0, rotZ: 0, scale: 1 },
+            'Monitor_3.fbx': { x: 0, y: 0, z: 0, rotX: 0, rotY: 0, rotZ: 0, scale: 1 },
+            'Monitor_4.fbx': { x: 0, y: 0, z: 0, rotX: 0, rotY: 0, rotZ: 0, scale: 1 },
+            'Monitor_5.fbx': { x: 0, y: 0, z: 0, rotX: 0, rotY: 0, rotZ: 0, scale: 1 },
+            'Monitor_6.fbx': { x: 0, y: 0, z: 0, rotX: 0, rotY: 0, rotZ: 0, scale: 1 },
+            'Monitor_7.fbx': { x: 0, y: 0, z: 0, rotX: 0, rotY: 0, rotZ: 0, scale: 1 }
+        };
+
+        console.log('Starting to load FBX files...');
+
+        fbxFiles.forEach((file, index) => {
+            console.log(`Attempting to load: ${file}`);
+            loader.load(
+                file,
+                (object) => {
+                    console.log(`✓ Successfully loaded: ${file}`);
+
+                    // Get layout configuration for this model
+                    const layout = roomLayout[file] || { x: 0, y: 0, z: 0, rotX: 0, rotY: 0, rotZ: 0, scale: 1 };
+
+                    // Apply scale (uniform scale of 1 on all axes)
+                    const scaleValue = layout.scale || 1;
+                    object.scale.set(scaleValue, scaleValue, scaleValue);
+
+                    // Apply position
+                    object.position.set(layout.x, layout.y, layout.z);
+
+                    // Apply rotation (set to 0,0,0 as specified)
+                    object.rotation.set(layout.rotX, layout.rotY, layout.rotZ);
+
+                    // Log model info for debugging
+                    const box = new THREE.Box3().setFromObject(object);
+                    const size = box.getSize(new THREE.Vector3());
+                    const center = box.getCenter(new THREE.Vector3());
+                    console.log(`${file} details:`, {
+                        scale: scaleValue,
+                        position: { x: layout.x, y: layout.y, z: layout.z },
+                        rotation: { x: layout.rotX, y: layout.rotY, z: layout.rotZ },
+                        boundingBoxSize: size,
+                        boundingBoxCenter: center,
+                        hasChildren: object.children.length
+                    });
+
+                    // Enable shadows and fix materials
+                    object.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+
+                            // For Main Monitor - log all meshes to help identify the screen
+                            if (file === 'Main_Monitor_1.fbx') {
+                                console.log(`Main_Monitor_1 mesh: ${child.name}`, {
+                                    geometry: child.geometry.type,
+                                    vertices: child.geometry.attributes.position.count,
+                                    material: child.material ? child.material.type : 'none',
+                                    materialColor: child.material && child.material.color ? child.material.color : 'no color'
+                                });
+
+                                // Apply screen to polySurface1077 (the largest mesh with 2832 vertices)
+                                if (child.name === 'polySurface1077') {
+                                    console.log(`Applying screen to ${child.name} in Main_Monitor_1`);
+
+                                    // Create a high-resolution canvas for the screen content
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = 1920;
+                                    canvas.height = 1080;
+                                    const ctx = canvas.getContext('2d');
+
+                                    // Draw realistic Windows 11 desktop
+                                    // Background - Windows 11 blue gradient
+                                    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                                    gradient.addColorStop(0, '#1e3a8a');
+                                    gradient.addColorStop(0.5, '#2563eb');
+                                    gradient.addColorStop(1, '#3b82f6');
+                                    ctx.fillStyle = gradient;
+                                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                                    // Add Windows logo in center (large)
+                                    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                                    const centerX = canvas.width / 2;
+                                    const centerY = canvas.height / 2;
+                                    const logoSize = 400;
+
+                                    // Windows 4-square logo
+                                    ctx.fillRect(centerX - logoSize/2 - 20, centerY - logoSize/2 - 20, logoSize/2 - 10, logoSize/2 - 10);
+                                    ctx.fillRect(centerX + 20, centerY - logoSize/2 - 20, logoSize/2 - 10, logoSize/2 - 10);
+                                    ctx.fillRect(centerX - logoSize/2 - 20, centerY + 20, logoSize/2 - 10, logoSize/2 - 10);
+                                    ctx.fillRect(centerX + 20, centerY + 20, logoSize/2 - 10, logoSize/2 - 10);
+
+                                    // Desktop icons on left side
+                                    const iconStartX = 100;
+                                    const iconStartY = 100;
+                                    const iconSpacing = 180;
+
+                                    // Icon 1 - This PC
+                                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                                    ctx.fillRect(iconStartX, iconStartY, 80, 80);
+                                    ctx.fillStyle = 'rgba(0, 120, 212, 0.9)';
+                                    ctx.fillRect(iconStartX + 10, iconStartY + 10, 60, 60);
+                                    ctx.fillStyle = 'white';
+                                    ctx.font = 'bold 28px Segoe UI, Arial';
+                                    ctx.textAlign = 'center';
+                                    ctx.fillText('This PC', iconStartX + 40, iconStartY + 110);
+
+                                    // Icon 2 - Documents
+                                    ctx.fillStyle = 'rgba(255, 193, 7, 0.9)';
+                                    ctx.fillRect(iconStartX, iconStartY + iconSpacing, 80, 80);
+                                    ctx.fillStyle = 'white';
+                                    ctx.fillText('Documents', iconStartX + 40, iconStartY + iconSpacing + 110);
+
+                                    // Icon 3 - Recycle Bin
+                                    ctx.fillStyle = 'rgba(158, 158, 158, 0.9)';
+                                    ctx.fillRect(iconStartX, iconStartY + iconSpacing * 2, 80, 80);
+                                    ctx.fillStyle = 'white';
+                                    ctx.fillText('Recycle Bin', iconStartX + 40, iconStartY + iconSpacing * 2 + 110);
+
+                                    // Taskbar at bottom - Windows 11 style (centered)
+                                    const taskbarHeight = 72;
+                                    ctx.fillStyle = 'rgba(20, 20, 20, 0.8)';
+                                    ctx.fillRect(0, canvas.height - taskbarHeight, canvas.width, taskbarHeight);
+
+                                    // Windows Start button (centered)
+                                    const startButtonX = canvas.width / 2 - 200;
+                                    const startButtonY = canvas.height - taskbarHeight / 2 - 24;
+
+                                    ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+                                    const btnSize = 16;
+                                    const btnGap = 4;
+                                    ctx.fillRect(startButtonX, startButtonY, btnSize, btnSize);
+                                    ctx.fillRect(startButtonX + btnSize + btnGap, startButtonY, btnSize, btnSize);
+                                    ctx.fillRect(startButtonX, startButtonY + btnSize + btnGap, btnSize, btnSize);
+                                    ctx.fillRect(startButtonX + btnSize + btnGap, startButtonY + btnSize + btnGap, btnSize, btnSize);
+
+                                    // Taskbar icons
+                                    const iconY = canvas.height - taskbarHeight / 2 - 20;
+
+                                    // Browser icon
+                                    ctx.fillStyle = '#0078D4';
+                                    ctx.fillRect(startButtonX + 80, iconY, 40, 40);
+
+                                    // File Explorer icon
+                                    ctx.fillStyle = '#FFB900';
+                                    ctx.fillRect(startButtonX + 140, iconY, 40, 40);
+
+                                    // VS Code icon
+                                    ctx.fillStyle = '#007ACC';
+                                    ctx.fillRect(startButtonX + 200, iconY, 40, 40);
+
+                                    // System tray - Time and Date
+                                    ctx.fillStyle = 'white';
+                                    ctx.font = 'bold 24px Segoe UI, Arial';
+                                    ctx.textAlign = 'right';
+                                    ctx.fillText('12:00 PM', canvas.width - 30, canvas.height - 38);
+                                    ctx.font = '18px Segoe UI, Arial';
+                                    ctx.fillText('10/29/2025', canvas.width - 30, canvas.height - 15);
+
+                                    // System icons (WiFi, Sound, Battery)
+                                    ctx.fillStyle = 'white';
+                                    ctx.fillRect(canvas.width - 150, iconY, 30, 30);
+                                    ctx.fillRect(canvas.width - 110, iconY, 30, 30);
+                                    ctx.fillRect(canvas.width - 70, iconY, 30, 30);
+
+                                    // Create texture from canvas
+                                    const texture = new THREE.CanvasTexture(canvas);
+                                    texture.needsUpdate = true;
+                                    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+                                    // Apply to material with high emissive (screen glow)
+                                    child.material = new THREE.MeshStandardMaterial({
+                                        map: texture,
+                                        emissive: new THREE.Color(0xffffff),
+                                        emissiveMap: texture,
+                                        emissiveIntensity: 0.6,
+                                        side: THREE.DoubleSide,
+                                        toneMapped: false
+                                    });
+                                }
+                            }
+
+                            // Check for and fix black materials for other models
+                            if (child.material) {
+                                // Make sure material is double-sided to prevent black faces
+                                child.material.side = THREE.DoubleSide;
+                                child.material.needsUpdate = true;
+                            }
+                        }
+                    });
+
+                    modelGroup.add(object);
+                    loadedModels.push({ name: file, object: object });
+
+                    // Store reference to Main Monitor for click detection
+                    if (file === 'Main_Monitor_1.fbx') {
+                        mainMonitorObject = object;
+                        console.log('Main Monitor stored for interaction');
+                    }
+
+                    loadedCount++;
+
+                    updateLoadingStatus();
+                },
+                (xhr) => {
+                    const percent = (xhr.loaded / xhr.total) * 100;
+                    console.log(`${file}: ${percent.toFixed(2)}% loaded`);
+                    document.getElementById('loading').innerHTML = `Loading ${file}... ${percent.toFixed(0)}%`;
+                },
+                (error) => {
+                    console.error(`Error loading ${file}:`, error);
+                    alert(`Error loading ${file}: ${error.message}`);
+                    loadedCount++;
+                    updateLoadingStatus();
+                }
+            );
+        });
+
+        function updateLoadingStatus() {
+            const loadingDiv = document.getElementById('loading');
+            const modelList = document.getElementById('modelList');
+
+            if (loadedCount === fbxFiles.length) {
+                loadingDiv.classList.add('loaded');
+
+                let listHTML = `<strong>Loaded Models (${loadedModels.length}/${fbxFiles.length}):</strong><ul style="margin: 5px 0; padding-left: 20px;">`;
+                loadedModels.forEach(model => {
+                    listHTML += `<li>${model.name}</li>`;
+                });
+                listHTML += '</ul>';
+                modelList.innerHTML = listHTML;
+
+                // Center camera on all models
+                centerCameraOnModels();
+            } else {
+                loadingDiv.innerHTML = `Loading Models... ${loadedCount}/${fbxFiles.length}`;
+            }
+        }
+
+        function centerCameraOnModels() {
+            if (loadedModels.length === 0) return;
+
+            const box = new THREE.Box3();
+            loadedModels.forEach(model => {
+                box.expandByObject(model.object);
+            });
+
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+            cameraZ *= 1.5; // Add some padding
+
+            camera.position.set(center.x + cameraZ * 0.5, center.y + cameraZ * 0.5, center.z + cameraZ);
+            camera.lookAt(center);
+            controls.target.copy(center);
+            controls.update();
+        }
+
+        // Button controls
+        document.getElementById('resetView').addEventListener('click', () => {
+            centerCameraOnModels();
+        });
+
+        document.getElementById('toggleGrid').addEventListener('click', () => {
+            gridHelper.visible = !gridHelper.visible;
+        });
+
+        document.getElementById('toggleAxes').addEventListener('click', () => {
+            axesHelper.visible = !axesHelper.visible;
+        });
+
+        // Scale control
+        const scaleSlider = document.getElementById('monitorScale');
+        const scaleValueDisplay = document.getElementById('scaleValue');
+
+        scaleSlider.addEventListener('input', (e) => {
+            scaleValueDisplay.textContent = e.target.value + 'x';
+        });
+
+        document.getElementById('applyScale').addEventListener('click', () => {
+            currentMonitorScale = parseFloat(scaleSlider.value);
+            location.reload(); // Reload to apply new scale
+        });
+
+        // Click handler for monitor interaction
+        function onMouseClick(event) {
+            // Calculate mouse position in normalized device coordinates
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // Update the raycaster
+            raycaster.setFromCamera(mouse, camera);
+
+            // Check if Main Monitor is clicked
+            if (mainMonitorObject) {
+                const intersects = raycaster.intersectObject(mainMonitorObject, true);
+
+                if (intersects.length > 0) {
+                    console.log('Main Monitor clicked!');
+                    toggleMonitorZoom();
+                }
+            }
+        }
+
+        // Toggle zoom in/out to monitor
+        function toggleMonitorZoom() {
+            if (!mainMonitorObject) return;
+
+            if (!isZoomedIn) {
+                // Save current camera position
+                originalCameraPosition.copy(camera.position);
+                originalControlsTarget.copy(controls.target);
+
+                // Get monitor position
+                const box = new THREE.Box3().setFromObject(mainMonitorObject);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+
+                // Calculate zoom position (in front of the monitor screen)
+                const distance = Math.max(size.x, size.y, size.z) * 0.5;
+                const targetPosition = new THREE.Vector3(
+                    center.x,
+                    center.y,
+                    center.z + distance
+                );
+
+                // Animate camera to monitor
+                animateCamera(targetPosition, center, 1000);
+                isZoomedIn = true;
+
+                console.log('Zooming to monitor...');
+            } else {
+                // Zoom back out
+                animateCamera(originalCameraPosition, originalControlsTarget, 1000);
+                isZoomedIn = false;
+
+                console.log('Zooming out...');
+            }
+        }
+
+        // Animate camera movement
+        function animateCamera(targetPosition, targetLookAt, duration) {
+            const startPosition = camera.position.clone();
+            const startLookAt = controls.target.clone();
+            const startTime = Date.now();
+
+            function updateCamera() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Easing function (smooth in-out)
+                const eased = progress < 0.5
+                    ? 2 * progress * progress
+                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+                // Interpolate position
+                camera.position.lerpVectors(startPosition, targetPosition, eased);
+                controls.target.lerpVectors(startLookAt, targetLookAt, eased);
+                controls.update();
+
+                if (progress < 1) {
+                    requestAnimationFrame(updateCamera);
+                }
+            }
+
+            updateCamera();
+        }
+
+        // Add click event listener
+        window.addEventListener('click', onMouseClick, false);
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
