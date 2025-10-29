@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor 7 - Live Stats</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', monospace;
+            background: #0a0e27;
+            color: #00ff41;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+        }
+        .container {
+            padding: 60px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 80px;
+            margin: 0 0 60px 0;
+            color: #00ff41;
+            text-shadow: 0 0 10px #00ff41;
+        }
+        .terminal {
+            background: rgba(0, 255, 65, 0.1);
+            border: 2px solid #00ff41;
+            padding: 40px;
+            border-radius: 10px;
+            font-size: 32px;
+            line-height: 1.8;
+        }
+        .prompt {
+            color: #00ff41;
+        }
+        .blink {
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SYSTEM STATUS</h1>
+        <div class="terminal">
+            <div><span class="prompt">$</span> npm run portfolio</div>
+            <div>Loading portfolio system...</div>
+            <div>Status: <span style="color: #00ff00;">ONLINE</span></div>
+            <div>Uptime: 99.9%</div>
+            <div>Projects: 15+</div>
+            <div>Coffee consumed: ∞</div>
+            <div><span class="prompt">$</span> <span class="blink">_</span></div>
+        </div>
+    </div>
+</body>
+</html>

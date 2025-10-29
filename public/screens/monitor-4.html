@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor 4 - Skills</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+        }
+        .container {
+            padding: 60px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 100px;
+            margin: 0 0 60px 0;
+        }
+        .skill-category {
+            margin-bottom: 50px;
+        }
+        .skill-category h2 {
+            font-size: 50px;
+            margin: 0 0 25px 0;
+        }
+        .skill-bar {
+            background: rgba(255, 255, 255, 0.3);
+            height: 50px;
+            border-radius: 25px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        .skill-fill {
+            background: white;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            padding-left: 30px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Technical Skills</h1>
+        <div class="skill-category">
+            <h2>Frontend</h2>
+            <div class="skill-bar">
+                <div class="skill-fill" style="width: 95%">React & Vue.js</div>
+            </div>
+            <div class="skill-bar">
+                <div class="skill-fill" style="width: 90%">Three.js & WebGL</div>
+            </div>
+        </div>
+        <div class="skill-category">
+            <h2>Backend</h2>
+            <div class="skill-bar">
+                <div class="skill-fill" style="width: 85%">Node.js & Express</div>
+            </div>
+            <div class="skill-bar">
+                <div class="skill-fill" style="width: 80%">Python & Django</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
