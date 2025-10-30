@@ -38,5 +38,10 @@ export default [
     name: 'roomWindow',
     type: 'fbxModel',
     path: '/Room_Window.fbx'
+  },
+  {
+    name: 'rollingChair',
+    type: 'fbxModel',
+    path: '/Rolling Chair_Animation.fbx'
   }
 ];
