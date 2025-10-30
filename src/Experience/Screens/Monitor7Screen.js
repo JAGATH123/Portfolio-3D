@@ -19,25 +19,42 @@ export default class Monitor7Screen {
     console.log('🔍 Searching for screen mesh in Monitor 7...');
     logAllMeshes(this.monitorModel, 'Monitor_7');
 
-    // Try to find the largest mesh as the screen (same approach as Main Monitor)
-    let largestMesh = null;
-    let largestVertexCount = 0;
-
+    // Look for meshes with "screen" or "display" in the name first
+    let screenMesh = null;
     this.monitorModel.traverse((child) => {
       if (child.isMesh) {
-        const vertexCount = child.geometry.attributes.position.count;
-        if (vertexCount > largestVertexCount) {
-          largestVertexCount = vertexCount;
-          largestMesh = child;
+        const name = child.name.toLowerCase();
+        if (name.includes('screen') || name.includes('display') || name.includes('monitor')) {
+          console.log(`🎯 Found mesh with screen-like name: ${child.name}`);
+          screenMesh = child;
         }
       }
     });
 
-    if (largestMesh) {
-      console.log(`✓ Found Monitor 7 screen mesh: ${largestMesh.name} (${largestVertexCount} vertices)`);
-      this.screenMesh = largestMesh;
+    // If no named screen found, try to find the largest mesh
+    if (!screenMesh) {
+      let largestMesh = null;
+      let largestVertexCount = 0;
+
+      this.monitorModel.traverse((child) => {
+        if (child.isMesh) {
+          const vertexCount = child.geometry.attributes.position.count;
+          if (vertexCount > largestVertexCount) {
+            largestVertexCount = vertexCount;
+            largestMesh = child;
+          }
+        }
+      });
+
+      if (largestMesh) {
+        console.log(`✓ Found Monitor 7 screen mesh (largest): ${largestMesh.name} (${largestVertexCount} vertices)`);
+        this.screenMesh = largestMesh;
+      } else {
+        console.warn('⚠ No screen mesh found in Monitor 7!');
+      }
     } else {
-      console.warn('⚠ No screen mesh found in Monitor 7!');
+      console.log(`✓ Using named screen mesh: ${screenMesh.name}`);
+      this.screenMesh = screenMesh;
     }
   }
 
@@ -49,68 +66,70 @@ export default class Monitor7Screen {
 
     console.log('🎨 Setting up canvas texture for Monitor 7 screen...');
 
+    // Get the screen mesh's world position and rotation
+    this.screenMesh.geometry.computeBoundingBox();
+    const bbox = this.screenMesh.geometry.boundingBox;
+
+    // Calculate dimensions
+    const width = bbox.max.x - bbox.min.x;
+    const height = bbox.max.y - bbox.min.y;
+    const depth = bbox.max.z - bbox.min.z;
+
+    console.log('📐 Original mesh dimensions:', { width, height, depth });
+
+    // Determine which dimensions to use for the plane
+    let planeWidth, planeHeight;
+    if (width >= height && width >= depth) {
+      if (height >= depth) {
+        planeWidth = width;
+        planeHeight = height;
+        console.log('📐 Using XY plane for new screen');
+      } else {
+        planeWidth = width;
+        planeHeight = depth;
+        console.log('📐 Using XZ plane for new screen');
+      }
+    } else {
+      planeWidth = height;
+      planeHeight = depth;
+      console.log('📐 Using YZ plane for new screen');
+    }
+
     // Create a high-resolution canvas for the System Status screen
     const canvas = document.createElement('canvas');
     canvas.width = 1920;
     canvas.height = 1080;
     const ctx = canvas.getContext('2d');
 
-    // Draw System Status screen (terminal style)
-    ctx.fillStyle = '#0a0e27'; // Dark blue background
+    // SUPER SIMPLE TEST - Just colors and giant text
+    // Black background
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Title
-    ctx.fillStyle = '#00ff41'; // Green text
-    ctx.font = 'bold 80px "Courier New"';
+    // Giant red border to verify full canvas is visible
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = 50;
+    ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+    // MASSIVE text that's impossible to miss
+    ctx.fillStyle = '#00ff00'; // Bright green
+    ctx.font = 'bold 300px Arial';
     ctx.textAlign = 'center';
-    ctx.shadowColor = '#00ff41';
-    ctx.shadowBlur = 10;
-    ctx.fillText('SYSTEM STATUS', canvas.width / 2, 150);
-    ctx.shadowBlur = 0;
+    ctx.textBaseline = 'middle';
 
-    // Terminal box
-    const boxX = 200;
-    const boxY = 250;
-    const boxWidth = canvas.width - 400;
-    const boxHeight = 700;
-
-    ctx.strokeStyle = '#00ff41';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-
-    // Terminal content
-    ctx.fillStyle = '#00ff41';
-    ctx.font = '40px "Courier New"';
-    ctx.textAlign = 'left';
-
-    let yPos = boxY + 80;
-    const lineHeight = 70;
-
-    ctx.fillText('$ npm run portfolio', boxX + 50, yPos);
-    yPos += lineHeight;
-    ctx.fillText('Loading portfolio system...', boxX + 50, yPos);
-    yPos += lineHeight;
-
-    ctx.fillStyle = '#00ff00'; // Brighter green for status
-    ctx.fillText('Status: ONLINE', boxX + 50, yPos);
-    yPos += lineHeight;
-
-    ctx.fillStyle = '#00ff41';
-    ctx.fillText('Uptime: 99.9%', boxX + 50, yPos);
-    yPos += lineHeight;
-    ctx.fillText('Projects: 15+', boxX + 50, yPos);
-    yPos += lineHeight;
-    ctx.fillText('Coffee consumed: ∞', boxX + 50, yPos);
-    yPos += lineHeight + 30;
-
-    // Cursor
-    ctx.fillText('$ _', boxX + 50, yPos);
+    // Draw text with thick black outline for contrast
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 15;
+    ctx.strokeText('ONLINE', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('ONLINE', canvas.width / 2, canvas.height / 2);
 
     console.log('✓ Canvas drawing complete for Monitor 7');
 
     // Create texture from canvas
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
 
     // Set anisotropy if renderer is available
     if (this.renderer && this.renderer.instance) {
@@ -120,19 +139,49 @@ export default class Monitor7Screen {
 
     console.log('✓ Texture created from canvas');
 
-    // Apply texture to the screen mesh
+    // SOLUTION: Replace the mesh geometry with a perfect PlaneGeometry
+    // Save the old material for disposal
+    const oldMaterial = this.screenMesh.material;
+
+    // Get world position and rotation
+    const worldPos = new THREE.Vector3();
+    const worldQuat = new THREE.Quaternion();
+    const worldScale = new THREE.Vector3();
+    this.screenMesh.getWorldPosition(worldPos);
+    this.screenMesh.getWorldQuaternion(worldQuat);
+    this.screenMesh.getWorldScale(worldScale);
+
+    console.log('📐 Screen world position:', worldPos);
+    console.log('📐 Screen world rotation:', worldQuat);
+
+    // Create a NEW plane with perfect UVs
+    const newGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight, 1, 1);
+
+    // Replace the geometry
+    const oldGeometry = this.screenMesh.geometry;
+    this.screenMesh.geometry = newGeometry;
+
+    console.log('✓ Replaced mesh geometry with PlaneGeometry');
+    console.log('✓ New plane dimensions:', planeWidth, 'x', planeHeight);
+
+    // Create material with canvas texture
     this.screenMesh.material = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.DoubleSide,
-      toneMapped: false
+      toneMapped: false,
+      transparent: false
     });
 
-    console.log('✓ Material applied to Monitor 7 screen mesh:', this.screenMesh.name);
-    console.log('✓ Material has map:', !!this.screenMesh.material.map);
+    console.log('✓ Material applied with canvas texture');
 
-    // Make screen mesh visible
+    // Dispose old resources
+    if (oldGeometry.dispose) oldGeometry.dispose();
+    if (oldMaterial.dispose) oldMaterial.dispose();
+
+    // Make visible
     this.screenMesh.visible = true;
 
     console.log('✓ Monitor 7 canvas screen setup complete!');
+    console.log('🎯 Look for test pattern: gradient colors, grid, corner labels, and "MONITOR 7" text');
   }
 }
