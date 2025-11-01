@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm install)",
-      "Bash(npm run dev)"
+      "Bash(npm run dev)",
+      "Bash(ls:*)",
+      "Bash(Get-Content \"public/CPUAnimation (1).fbx\" -TotalCount 1 -ErrorAction SilentlyContinue)"
     ],
     "deny": [],
     "ask": []

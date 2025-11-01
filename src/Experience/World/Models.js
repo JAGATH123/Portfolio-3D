@@ -94,6 +94,67 @@ export default class Models {
     console.log("Rotation:", this.rollingChair.rotation);
     console.log("Scale:", this.rollingChair.scale);
 
+    this.cpuAnimation = this.resources.items.cpuAnimation;
+
+    // Check if CPU model loaded successfully
+    if (this.cpuAnimation) {
+      console.log("✓ CPU Animation loaded successfully");
+
+      // Setup animation mixer for CPU
+      if (
+        this.cpuAnimation.animations &&
+        this.cpuAnimation.animations.length > 0
+      ) {
+        this.cpuMixer = new THREE.AnimationMixer(this.cpuAnimation);
+
+        console.log(
+          "🎬 Found",
+          this.cpuAnimation.animations.length,
+          "animations in CPU"
+        );
+
+        // Play all animations
+        this.cpuAnimation.animations.forEach((clip, index) => {
+          const action = this.cpuMixer.clipAction(clip);
+          action.play();
+          console.log(
+            `✓ Playing CPU animation ${index + 1}:`,
+            clip.name,
+            `(${clip.duration.toFixed(2)}s)`
+          );
+        });
+      } else {
+        console.warn("⚠ No animations found in CPU");
+      }
+
+      // Apply materials and shadows
+      this.cpuAnimation.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          if (child.material) {
+            child.material.side = THREE.DoubleSide;
+          }
+        }
+      });
+
+      // Position and scale CPU like other models (monitors are at origin with scale 1)
+      // All models in Room_Window.fbx are positioned at origin
+      this.cpuAnimation.position.set(0, 0, 0); // Same as monitors - origin
+      this.cpuAnimation.rotation.set(0, 0, 0);
+      this.cpuAnimation.scale.set(0.03, 0.03, 0.03); // Reduce to 3% of original size
+
+      this.scene.add(this.cpuAnimation);
+      console.log("✓ CPU Animation added to scene");
+      console.log("📐 CPU Position:", this.cpuAnimation.position);
+      console.log("📐 CPU Rotation:", this.cpuAnimation.rotation);
+      console.log("📐 CPU Scale:", this.cpuAnimation.scale);
+    } else {
+      console.error(
+        "❌ CPU Animation failed to load! Check if CPUAnimation_1.fbx exists in public folder"
+      );
+    }
+
     // Store monitor models
     this.mainMonitor = this.resources.items.mainMonitor;
     this.mainMonitor.name = "Main_Monitor_1"; // Set name for raycasting
@@ -155,9 +216,14 @@ export default class Models {
   }
 
   update() {
-    // Update animation mixer
+    // Update animation mixer for chair
     if (this.mixer) {
       this.mixer.update(this.time.delta * 0.001); // Convert to seconds
+    }
+
+    // Update animation mixer for CPU
+    if (this.cpuMixer) {
+      this.cpuMixer.update(this.time.delta * 0.001); // Convert to seconds
     }
   }
 }

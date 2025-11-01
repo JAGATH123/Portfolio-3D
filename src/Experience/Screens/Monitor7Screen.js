@@ -190,7 +190,6 @@ export default class Monitor7Screen {
 
     newScreen.setRotationFromQuaternion(worldQuat);
 
-    // ⭐ ADJUST THESE VALUES TO TILT/ROTATE THE SCREEN IN 3D ⭐
     const xRotation = 0; // Tilt up (-) or down (+) in radians
     const yRotation = 0; // Rotate left (-) or right (+) in radians
     const zRotation = 0; // Roll left (-) or right (+) in radians

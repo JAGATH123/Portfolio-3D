@@ -27,17 +27,41 @@ export default class Resources extends EventEmitter {
     // Load each source
     for (const source of this.sources) {
       if (source.type === 'fbxModel') {
-        this.loaders.fbxLoader.load(source.path, (file) => {
-          this.sourceLoaded(source, file);
-        });
+        this.loaders.fbxLoader.load(
+          source.path,
+          (file) => {
+            this.sourceLoaded(source, file);
+          },
+          undefined,
+          (error) => {
+            console.error(`Error loading ${source.name}:`, error);
+            this.sourceLoaded(source, null);
+          }
+        );
       } else if (source.type === 'texture') {
-        this.loaders.textureLoader.load(source.path, (file) => {
-          this.sourceLoaded(source, file);
-        });
+        this.loaders.textureLoader.load(
+          source.path,
+          (file) => {
+            this.sourceLoaded(source, file);
+          },
+          undefined,
+          (error) => {
+            console.error(`Error loading ${source.name}:`, error);
+            this.sourceLoaded(source, null);
+          }
+        );
       } else if (source.type === 'cubeTexture') {
-        this.loaders.cubeTextureLoader.load(source.path, (file) => {
-          this.sourceLoaded(source, file);
-        });
+        this.loaders.cubeTextureLoader.load(
+          source.path,
+          (file) => {
+            this.sourceLoaded(source, file);
+          },
+          undefined,
+          (error) => {
+            console.error(`Error loading ${source.name}:`, error);
+            this.sourceLoaded(source, null);
+          }
+        );
       }
     }
   }
