@@ -10,124 +10,112 @@ export default class Renderer {
     this.scene = this.experience.scene;
     this.camera = this.experience.camera;
 
-    // CSS3D scenes (Main Monitor uses canvas texture instead)
-    // this.cssMainMonitorScene = this.experience.cssMainMonitorScene; // Not used
-    this.cssMonitor2Scene = this.experience.cssMonitor2Scene;
-    this.cssMonitor3Scene = this.experience.cssMonitor3Scene;
-    this.cssMonitor4Scene = this.experience.cssMonitor4Scene;
-    this.cssMonitor5Scene = this.experience.cssMonitor5Scene;
-    this.cssMonitor6Scene = this.experience.cssMonitor6Scene;
+    // CSS3D scenes
+    this.cssMainMonitorScene = this.experience.cssMainMonitorScene;
     this.cssMonitor7Scene = this.experience.cssMonitor7Scene;
 
     // CSS3D DOM containers
-    // this.cssMainMonitor = this.experience.cssMainMonitor; // Not used
-    this.cssMonitor2 = this.experience.cssMonitor2;
-    this.cssMonitor3 = this.experience.cssMonitor3;
-    this.cssMonitor4 = this.experience.cssMonitor4;
-    this.cssMonitor5 = this.experience.cssMonitor5;
-    this.cssMonitor6 = this.experience.cssMonitor6;
+    this.cssMainMonitor = this.experience.cssMainMonitor;
     this.cssMonitor7 = this.experience.cssMonitor7;
 
     this.setInstance();
-    // this.setCSS3DRenderers(); // Disabled - no CSS3D renderers needed for now
+    this.setCSS3DRenderers();
   }
 
   setInstance() {
+    // Dispose of old renderer if it exists (from HMR reloads)
+    if (this.instance) {
+      this.instance.dispose();
+      this.instance.forceContextLoss();
+    }
+
     this.instance = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
+      alpha: false,
     });
     this.instance.setSize(this.sizes.width, this.sizes.height);
     this.instance.setPixelRatio(this.sizes.pixelRatio);
+    this.instance.setClearColor('#1a1a1a'); // Dark gray background instead of black
     this.instance.shadowMap.enabled = true;
     this.instance.shadowMap.type = THREE.PCFSoftShadowMap;
     this.instance.toneMapping = THREE.ACESFilmicToneMapping;
     this.instance.toneMappingExposure = 1;
+
+    console.log('✓ WebGL Renderer initialized');
+    console.log('  - Size:', this.sizes.width, 'x', this.sizes.height);
+    console.log('  - Pixel Ratio:', this.sizes.pixelRatio);
+    console.log('  - Clear Color:', '#1a1a1a');
   }
 
   setCSS3DRenderers() {
-    // Main Monitor uses canvas texture - no CSS3D renderer needed
-    // this.cssMainMonitorInstance = new CSS3DRenderer();
-    // this.cssMainMonitorInstance.setSize(this.sizes.width, this.sizes.height);
-    // this.cssMainMonitorInstance.domElement.style.position = 'absolute';
-    // this.cssMainMonitorInstance.domElement.style.top = '0px';
-    // this.cssMainMonitorInstance.domElement.style.pointerEvents = 'none';
-    // this.cssMainMonitor.appendChild(this.cssMainMonitorInstance.domElement);
+    // Main Monitor CSS3D Renderer
+    if (this.cssMainMonitor) {
+      // Clear any existing CSS3D elements (from HMR reloads)
+      while (this.cssMainMonitor.firstChild) {
+        this.cssMainMonitor.removeChild(this.cssMainMonitor.firstChild);
+      }
 
-    // Monitor 2 CSS3D Renderer
-    this.cssMonitor2Instance = new CSS3DRenderer();
-    this.cssMonitor2Instance.setSize(this.sizes.width, this.sizes.height);
-    this.cssMonitor2Instance.domElement.style.position = 'absolute';
-    this.cssMonitor2Instance.domElement.style.top = '0px';
-    this.cssMonitor2Instance.domElement.style.pointerEvents = 'none';
-    this.cssMonitor2.appendChild(this.cssMonitor2Instance.domElement);
-
-    // Monitor 3 CSS3D Renderer
-    this.cssMonitor3Instance = new CSS3DRenderer();
-    this.cssMonitor3Instance.setSize(this.sizes.width, this.sizes.height);
-    this.cssMonitor3Instance.domElement.style.position = 'absolute';
-    this.cssMonitor3Instance.domElement.style.top = '0px';
-    this.cssMonitor3Instance.domElement.style.pointerEvents = 'none';
-    this.cssMonitor3.appendChild(this.cssMonitor3Instance.domElement);
-
-    // Monitor 4 CSS3D Renderer
-    this.cssMonitor4Instance = new CSS3DRenderer();
-    this.cssMonitor4Instance.setSize(this.sizes.width, this.sizes.height);
-    this.cssMonitor4Instance.domElement.style.position = 'absolute';
-    this.cssMonitor4Instance.domElement.style.top = '0px';
-    this.cssMonitor4Instance.domElement.style.pointerEvents = 'none';
-    this.cssMonitor4.appendChild(this.cssMonitor4Instance.domElement);
-
-    // Monitor 5 CSS3D Renderer
-    this.cssMonitor5Instance = new CSS3DRenderer();
-    this.cssMonitor5Instance.setSize(this.sizes.width, this.sizes.height);
-    this.cssMonitor5Instance.domElement.style.position = 'absolute';
-    this.cssMonitor5Instance.domElement.style.top = '0px';
-    this.cssMonitor5Instance.domElement.style.pointerEvents = 'none';
-    this.cssMonitor5.appendChild(this.cssMonitor5Instance.domElement);
-
-    // Monitor 6 CSS3D Renderer
-    this.cssMonitor6Instance = new CSS3DRenderer();
-    this.cssMonitor6Instance.setSize(this.sizes.width, this.sizes.height);
-    this.cssMonitor6Instance.domElement.style.position = 'absolute';
-    this.cssMonitor6Instance.domElement.style.top = '0px';
-    this.cssMonitor6Instance.domElement.style.pointerEvents = 'none';
-    this.cssMonitor6.appendChild(this.cssMonitor6Instance.domElement);
+      this.cssMainMonitorInstance = new CSS3DRenderer();
+      this.cssMainMonitorInstance.setSize(this.sizes.width, this.sizes.height);
+      this.cssMainMonitorInstance.domElement.style.position = 'absolute';
+      this.cssMainMonitorInstance.domElement.style.top = '0px';
+      this.cssMainMonitorInstance.domElement.style.pointerEvents = 'none';
+      this.cssMainMonitor.appendChild(this.cssMainMonitorInstance.domElement);
+      console.log('✓ CSS3D renderer created for Main Monitor');
+    }
 
     // Monitor 7 CSS3D Renderer
-    this.cssMonitor7Instance = new CSS3DRenderer();
-    this.cssMonitor7Instance.setSize(this.sizes.width, this.sizes.height);
-    this.cssMonitor7Instance.domElement.style.position = 'absolute';
-    this.cssMonitor7Instance.domElement.style.top = '0px';
-    this.cssMonitor7Instance.domElement.style.pointerEvents = 'none';
-    this.cssMonitor7.appendChild(this.cssMonitor7Instance.domElement);
+    if (this.cssMonitor7) {
+      // Clear any existing CSS3D elements (from HMR reloads)
+      while (this.cssMonitor7.firstChild) {
+        this.cssMonitor7.removeChild(this.cssMonitor7.firstChild);
+      }
+
+      this.cssMonitor7Instance = new CSS3DRenderer();
+      this.cssMonitor7Instance.setSize(this.sizes.width, this.sizes.height);
+      this.cssMonitor7Instance.domElement.style.position = 'absolute';
+      this.cssMonitor7Instance.domElement.style.top = '0px';
+      this.cssMonitor7Instance.domElement.style.pointerEvents = 'none';
+      this.cssMonitor7.appendChild(this.cssMonitor7Instance.domElement);
+      console.log('✓ CSS3D renderer created for Monitor 7');
+    }
   }
 
   resize() {
     this.instance.setSize(this.sizes.width, this.sizes.height);
     this.instance.setPixelRatio(this.sizes.pixelRatio);
 
-    // Resize CSS3D renderers - ALL DISABLED
-    // this.cssMainMonitorInstance.setSize(this.sizes.width, this.sizes.height); // Not used
-    // this.cssMonitor2Instance.setSize(this.sizes.width, this.sizes.height);
-    // this.cssMonitor3Instance.setSize(this.sizes.width, this.sizes.height);
-    // this.cssMonitor4Instance.setSize(this.sizes.width, this.sizes.height);
-    // this.cssMonitor5Instance.setSize(this.sizes.width, this.sizes.height);
-    // this.cssMonitor6Instance.setSize(this.sizes.width, this.sizes.height);
-    // this.cssMonitor7Instance.setSize(this.sizes.width, this.sizes.height);
+    // Resize CSS3D renderers
+    if (this.cssMainMonitorInstance) {
+      this.cssMainMonitorInstance.setSize(this.sizes.width, this.sizes.height);
+    }
+    if (this.cssMonitor7Instance) {
+      this.cssMonitor7Instance.setSize(this.sizes.width, this.sizes.height);
+    }
   }
 
   update() {
-    // Render WebGL scene only
+    // Render WebGL scene
     this.instance.render(this.scene, this.camera.instance);
 
-    // CSS3D rendering - ALL DISABLED
-    // Main Monitor uses canvas texture, others not positioned yet
+    // Render CSS3D scenes
+    if (this.cssMainMonitorInstance && this.cssMainMonitorScene) {
+      this.cssMainMonitorInstance.render(
+        this.cssMainMonitorScene,
+        this.camera.instance
+      );
+    }
+
+    if (this.cssMonitor7Instance && this.cssMonitor7Scene) {
+      this.cssMonitor7Instance.render(
+        this.cssMonitor7Scene,
+        this.camera.instance
+      );
+    }
+
+    // Other monitors disabled for now
     /*
-    this.cssMainMonitorInstance.render(
-      this.cssMainMonitorScene,
-      this.camera.instance
-    );
     this.cssMonitor2Instance.render(
       this.cssMonitor2Scene,
       this.camera.instance

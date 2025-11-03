@@ -1,5 +1,15 @@
 import Experience from './Experience/Experience.js';
 
+// Clean up any duplicate canvases (from HMR reloads)
+const allCanvases = document.querySelectorAll('canvas.webgl');
+if (allCanvases.length > 1) {
+  console.log(`🧹 Removing ${allCanvases.length - 1} duplicate canvas(es)`);
+  // Keep the first one, remove all others
+  for (let i = 1; i < allCanvases.length; i++) {
+    allCanvases[i].remove();
+  }
+}
+
 // Get canvas element
 const canvas = document.querySelector('canvas.webgl');
 

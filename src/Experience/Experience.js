@@ -29,24 +29,13 @@ export default class Experience {
     this.time = new Time();
     this.scene = new THREE.Scene();
 
-    // Create CSS3D scenes for monitors (Main Monitor uses canvas texture instead)
-    // this.cssMainMonitorScene = new THREE.Scene(); // Not used - Main Monitor uses canvas
-    // CSS3D for other monitors - disabled for now, enable when you position them correctly
-    // this.cssMonitor2Scene = new THREE.Scene();
-    // this.cssMonitor3Scene = new THREE.Scene();
-    // this.cssMonitor4Scene = new THREE.Scene();
-    // this.cssMonitor5Scene = new THREE.Scene();
-    // this.cssMonitor6Scene = new THREE.Scene();
-    // this.cssMonitor7Scene = new THREE.Scene();
+    // Create CSS3D scenes for monitors
+    this.cssMainMonitorScene = new THREE.Scene(); // CSS3D for Main Monitor
+    this.cssMonitor7Scene = new THREE.Scene(); // CSS3D for Monitor 7
 
-    // Get DOM containers for CSS3D renderers - disabled
-    // this.cssMainMonitor = document.querySelector('.css-main-monitor'); // Not used
-    // this.cssMonitor2 = document.querySelector('.css-monitor-2');
-    // this.cssMonitor3 = document.querySelector('.css-monitor-3');
-    // this.cssMonitor4 = document.querySelector('.css-monitor-4');
-    // this.cssMonitor5 = document.querySelector('.css-monitor-5');
-    // this.cssMonitor6 = document.querySelector('.css-monitor-6');
-    // this.cssMonitor7 = document.querySelector('.css-monitor-7');
+    // Get DOM containers for CSS3D renderers
+    this.cssMainMonitor = document.querySelector('.css-main-monitor');
+    this.cssMonitor7 = document.querySelector('.css-monitor-7');
 
     this.resources = new Resources(sources);
     this.camera = new Camera();

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Simple FBX Test</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+        #output {
+            white-space: pre-wrap;
+            background: #111;
+            padding: 20px;
+            border: 2px solid #0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>FBX File Test</h1>
+    <div id="output">Starting test...</div>
+    <canvas id="canvas" style="border: 2px solid #f00; margin-top: 20px;"></canvas>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        const output = document.getElementById('output');
+        const canvas = document.getElementById('canvas');
+
+        function log(msg) {
+            output.textContent += '\n' + msg;
+            console.log(msg);
+        }
+
+        log('Importing Three.js...');
+
+        import * as THREE from 'three';
+        log('✓ Three.js imported: ' + THREE.REVISION);
+
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+        log('✓ FBXLoader imported');
+
+        // Setup scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x333333);
+
+        const camera = new THREE.PerspectiveCamera(75, 800/600, 0.1, 1000);
+        camera.position.z = 10;
+
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas });
+        renderer.setSize(800, 600);
+        log('✓ Scene, camera, renderer ready');
+
+        // Add light
+        const light = new THREE.AmbientLight(0xffffff, 1);
+        scene.add(light);
+        log('✓ Light added');
+
+        // Test 1: Load Main_Monitor_UV.fbx
+        log('\n=== TEST 1: Loading Main_Monitor_UV.fbx ===');
+        const loader = new FBXLoader();
+
+        loader.load(
+            'Main_Monitor_UV.fbx',
+
+            function(object) {
+                log('✓✓✓ SUCCESS! FBX loaded');
+                log('Object name: ' + object.name);
+                log('Children: ' + object.children.length);
+
+                let meshCount = 0;
+                object.traverse(function(child) {
+                    if (child.isMesh) {
+                        meshCount++;
+                        const verts = child.geometry.attributes.position.count;
+                        const hasUV = !!child.geometry.attributes.uv;
+                        log(`  Mesh ${meshCount}: "${child.name}" - ${verts} verts - UV: ${hasUV}`);
+                    }
+                });
+
+                if (meshCount === 0) {
+                    log('⚠️ WARNING: No meshes found in FBX!');
+                } else {
+                    log(`✓ Total meshes: ${meshCount}`);
+                    scene.add(object);
+                    renderer.render(scene, camera);
+                }
+            },
+
+            function(xhr) {
+                const percent = Math.floor((xhr.loaded / xhr.total) * 100);
+                log(`Loading: ${percent}%`);
+            },
+
+            function(error) {
+                log('❌ ERROR: ' + error.message);
+                log('Error details: ' + error.toString());
+
+                // Try original file
+                log('\n=== TEST 2: Loading Main_Monitor_1.fbx (fallback) ===');
+                loader.load(
+                    'Main_Monitor_1.fbx',
+                    function(obj) {
+                        log('✓ Original file loaded!');
+                        let count = 0;
+                        obj.traverse(child => {
+                            if (child.isMesh) {
+                                count++;
+                                log(`  Mesh: "${child.name}"`);
+                            }
+                        });
+                        log(`✓ Meshes in original: ${count}`);
+                        scene.add(obj);
+                        renderer.render(scene, camera);
+                    },
+                    null,
+                    function(err) {
+                        log('❌ Fallback also failed: ' + err.message);
+                    }
+                );
+            }
+        );
+
+        // Render loop
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        log('\n✓ Render loop started');
+        log('Waiting for FBX files...\n');
+    </script>
+</body>
+</html>

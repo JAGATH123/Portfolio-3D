@@ -2,7 +2,7 @@ export default [
   {
     name: "mainMonitor",
     type: "fbxModel",
-    path: "/Main_Monitor_1.fbx",
+    path: "/Main_Monitor_UV.fbx",
   },
   {
     name: "monitor2",
@@ -47,6 +47,21 @@ export default [
   {
     name: "cpuAnimation",
     type: "fbxModel",
-    path: "/CPUAnimation (1).fbx",
+    path: "/CPU_Animation.fbx",
+  },
+  {
+    name: "asset",
+    type: "fbxModel",
+    path: "/Asset.fbx",
+  },
+  {
+    name: "jatWires",
+    type: "fbxModel",
+    path: "/J_A_T_Wires.fbx",
+  },
+  {
+    name: "miniFAnim",
+    type: "fbxModel",
+    path: "/Animation/Animation/MIni_F Anim.fbx",
   },
 ];

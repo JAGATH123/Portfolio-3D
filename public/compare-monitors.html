@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Compare Monitor Files</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .file-test {
+            flex: 1;
+            background: #111;
+            padding: 20px;
+            border: 2px solid #0f0;
+        }
+        canvas {
+            width: 100%;
+            height: 400px;
+            border: 2px solid #f00;
+            margin-top: 10px;
+        }
+        .output {
+            white-space: pre-wrap;
+            font-size: 11px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Monitor Files Comparison</h1>
+    <div class="container">
+        <div class="file-test">
+            <h2>Original: Main_Monitor_1.fbx</h2>
+            <div id="output1" class="output">Loading...</div>
+            <canvas id="canvas1"></canvas>
+        </div>
+        <div class="file-test">
+            <h2>UV File: Main_Monitor_UV.fbx</h2>
+            <div id="output2" class="output">Loading...</div>
+            <canvas id="canvas2"></canvas>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        function setupViewer(canvasId, outputId, fbxPath) {
+            const output = document.getElementById(outputId);
+            const canvas = document.getElementById(canvasId);
+
+            function log(msg) {
+                output.textContent += msg + '\n';
+            }
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x222222);
+
+            const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            camera.position.set(5, 5, 10);
+
+            const renderer = new THREE.WebGLRenderer({ canvas });
+            renderer.setSize(400, 400);
+
+            const light = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(light);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            const gridHelper = new THREE.GridHelper(20, 20);
+            scene.add(gridHelper);
+
+            const controls = new OrbitControls(camera, canvas);
+            controls.enableDamping = true;
+
+            const loader = new FBXLoader();
+
+            loader.load(
+                fbxPath,
+                function(object) {
+                    log('✓ Loaded: ' + fbxPath);
+                    log('Position: ' + JSON.stringify(object.position));
+                    log('Scale: ' + JSON.stringify(object.scale));
+
+                    const bbox = new THREE.Box3().setFromObject(object);
+                    const size = bbox.getSize(new THREE.Vector3());
+                    const center = bbox.getCenter(new THREE.Vector3());
+
+                    log('Size: ' + size.x.toFixed(2) + ' x ' + size.y.toFixed(2) + ' x ' + size.z.toFixed(2));
+                    log('Center: ' + center.x.toFixed(2) + ', ' + center.y.toFixed(2) + ', ' + center.z.toFixed(2));
+                    log('');
+
+                    let meshCount = 0;
+                    object.traverse(child => {
+                        if (child.isMesh) {
+                            meshCount++;
+                            const verts = child.geometry.attributes.position.count;
+                            const hasUV = !!child.geometry.attributes.uv;
+                            log(`Mesh ${meshCount}: "${child.name}"`);
+                            log(`  Verts: ${verts}, UV: ${hasUV}`);
+                        }
+                    });
+
+                    scene.add(object);
+
+                    // Fit camera
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const fov = camera.fov * (Math.PI / 180);
+                    let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                    cameraZ *= 2;
+                    camera.position.set(cameraZ, cameraZ, cameraZ);
+                    camera.lookAt(center);
+                },
+                null,
+                function(error) {
+                    log('❌ Error: ' + error.message);
+                }
+            );
+
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+
+        setupViewer('canvas1', 'output1', '/Main_Monitor_1.fbx');
+        setupViewer('canvas2', 'output2', '/Main_Monitor_UV.fbx');
+    </script>
+</body>
+</html>

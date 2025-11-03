@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UV Position Fixer</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: monospace;
+            background: #000;
+            display: flex;
+            height: 100vh;
+        }
+
+        #left-panel {
+            width: 300px;
+            background: #111;
+            color: #0f0;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid #0f0;
+        }
+
+        #preview {
+            flex: 1;
+            position: relative;
+        }
+
+        h2 {
+            color: #ff4757;
+            margin-top: 0;
+        }
+
+        .control-group {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #333;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px 0;
+            color: #0ff;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .value-display {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background: #0f0;
+            color: #000;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #0ff;
+        }
+
+        #code-box {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border: 1px solid #0f0;
+            font-size: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre;
+        }
+
+        .instruction {
+            background: #222;
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 3px solid #ff4757;
+            color: #fff;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="left-panel">
+        <h2>🔧 UV Fixer</h2>
+
+        <div class="instruction">
+            Adjust sliders until text looks perfect in the preview →
+        </div>
+
+        <div class="control-group">
+            <label>X Position: <span class="value-display" id="xVal">170</span></label>
+            <input type="range" id="xSlider" min="0" max="1024" value="170" step="1">
+
+            <label>Y Position: <span class="value-display" id="yVal">256</span></label>
+            <input type="range" id="ySlider" min="0" max="512" value="256" step="1">
+
+            <label>Font Size: <span class="value-display" id="fontVal">28</span>px</label>
+            <input type="range" id="fontSlider" min="10" max="60" value="28" step="1">
+        </div>
+
+        <div class="control-group">
+            <label>
+                <input type="checkbox" id="flipH" checked> Flip Horizontal
+            </label>
+            <label>
+                <input type="checkbox" id="flipV" checked> Flip Vertical
+            </label>
+        </div>
+
+        <button onclick="copyCode()">📋 COPY CODE</button>
+        <button onclick="applyToMain()">✅ APPLY TO MAIN APP</button>
+
+        <h3 style="color: #0ff;">Generated Code:</h3>
+        <div id="code-box"></div>
+    </div>
+
+    <div id="preview"></div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a1a);
+
+        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+        camera.position.set(5, 5, 10);
+
+        const preview = document.getElementById('preview');
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(preview.clientWidth, preview.clientHeight);
+        preview.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        dirLight.position.set(5, 5, 5);
+        scene.add(dirLight);
+
+        const gridHelper = new THREE.GridHelper(20, 20);
+        scene.add(gridHelper);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        let screenMesh = null;
+        let canvasTexture = null;
+
+        // Controls
+        const xSlider = document.getElementById('xSlider');
+        const ySlider = document.getElementById('ySlider');
+        const fontSlider = document.getElementById('fontSlider');
+        const flipH = document.getElementById('flipH');
+        const flipV = document.getElementById('flipV');
+
+        const xVal = document.getElementById('xVal');
+        const yVal = document.getElementById('yVal');
+        const fontVal = document.getElementById('fontVal');
+        const codeBox = document.getElementById('code-box');
+
+        function updateCanvas() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            if (flipH.checked) {
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+            }
+
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const x = parseInt(xSlider.value);
+            const y = parseInt(ySlider.value);
+            const fontSize = parseInt(fontSlider.value);
+
+            xVal.textContent = x;
+            yVal.textContent = y;
+            fontVal.textContent = fontSize;
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.fillStyle = '#ff4757';
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.fillText('PORTFOLIO', x, y - fontSize * 1.6);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${Math.round(fontSize * 0.71)}px Arial`;
+            ctx.fillText('3D Experience', x, y);
+
+            ctx.fillStyle = '#2ed573';
+            ctx.font = `${Math.round(fontSize * 0.64)}px Arial`;
+            ctx.fillText('Click to Explore', x, y + fontSize * 1.4);
+
+            if (canvasTexture) {
+                canvasTexture.image = canvas;
+                canvasTexture.needsUpdate = true;
+            } else {
+                canvasTexture = new THREE.CanvasTexture(canvas);
+            }
+
+            canvasTexture.flipY = flipV.checked;
+
+            if (screenMesh) {
+                screenMesh.material.map = canvasTexture;
+                screenMesh.material.needsUpdate = true;
+            }
+
+            updateCode(x, y, fontSize);
+        }
+
+        function updateCode(x, y, fontSize) {
+            const code = `const visibleX = ${x};
+const visibleY = ${y};
+
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+
+ctx.fillStyle = '#ff4757';
+ctx.font = 'bold ${fontSize}px Arial';
+ctx.fillText('PORTFOLIO', visibleX, visibleY - ${Math.round(fontSize * 1.6)});
+
+ctx.fillStyle = '#ffffff';
+ctx.font = 'bold ${Math.round(fontSize * 0.71)}px Arial';
+ctx.fillText('3D Experience', visibleX, visibleY);
+
+ctx.fillStyle = '#2ed573';
+ctx.font = '${Math.round(fontSize * 0.64)}px Arial';
+ctx.fillText('Click to Explore', visibleX, visibleY + ${Math.round(fontSize * 1.4)});
+
+this.canvasTexture.flipY = ${flipV.checked};`;
+
+            codeBox.textContent = code;
+        }
+
+        window.copyCode = function() {
+            navigator.clipboard.writeText(codeBox.textContent);
+            alert('✅ Code copied! Paste into MainMonitorScreen.js');
+        };
+
+        window.applyToMain = function() {
+            alert('📋 Code copied to clipboard!\n\n1. Open MainMonitorScreen.js\n2. Find the setupScreen() method\n3. Replace the text positioning code\n4. Refresh your main app');
+            navigator.clipboard.writeText(codeBox.textContent);
+        };
+
+        xSlider.addEventListener('input', updateCanvas);
+        ySlider.addEventListener('input', updateCanvas);
+        fontSlider.addEventListener('input', updateCanvas);
+        flipH.addEventListener('change', updateCanvas);
+        flipV.addEventListener('change', updateCanvas);
+
+        // Load FBX
+        const loader = new FBXLoader();
+        loader.load('/Main_Monitor_UV.fbx', function(object) {
+            object.scale.set(0.03280839895013123, 0.03280839895013123, 0.03280839895013123);
+            scene.add(object);
+
+            object.traverse((child) => {
+                if (child.isMesh && child.name === 'Main_Monitor') {
+                    screenMesh = child;
+                    updateCanvas();
+                }
+            });
+
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+            cameraZ *= 2;
+            camera.position.set(cameraZ, cameraZ, cameraZ);
+            camera.lookAt(center);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            const width = preview.clientWidth;
+            const height = preview.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Monitor UV Debug</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+        }
+        #console {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 100;
+        }
+        .log {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        .success { color: #00ff00; }
+        .error { color: #ff0000; }
+        .info { color: #00aaff; }
+        .warning { color: #ffaa00; }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="console">
+        <h2 style="color: #ff4757;">Main Monitor UV Debug Console</h2>
+        <div id="logs"></div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const logsDiv = document.getElementById('logs');
+
+        function log(message, type = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = `log ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message);
+        }
+
+        log('🚀 Starting FBX Test...', 'info');
+
+        // Setup scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a1a);
+        log('✓ Scene created', 'success');
+
+        // Setup camera
+        const camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        camera.position.set(5, 5, 10);
+        log('✓ Camera setup', 'success');
+
+        // Setup renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+        log('✓ Renderer created', 'success');
+
+        // Add lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 10, 5);
+        scene.add(directionalLight);
+        log('✓ Lights added', 'success');
+
+        // Add grid and axes
+        const gridHelper = new THREE.GridHelper(20, 20);
+        scene.add(gridHelper);
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+        log('✓ Helpers added', 'success');
+
+        // Setup controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        log('✓ Controls setup', 'success');
+
+        // Test 1: Try loading Main_Monitor_UV.fbx
+        log('📦 Attempting to load: /Main_Monitor_UV.fbx', 'info');
+
+        const loader = new FBXLoader();
+
+        loader.load(
+            '/Main_Monitor_UV.fbx',
+
+            // Success callback
+            function (object) {
+                log('✓✓✓ FBX LOADED SUCCESSFULLY! ✓✓✓', 'success');
+                log(`Object type: ${object.type}`, 'info');
+                log(`Object name: ${object.name}`, 'info');
+                log(`Children count: ${object.children.length}`, 'info');
+
+                scene.add(object);
+
+                // Get all meshes
+                const meshes = [];
+                object.traverse((child) => {
+                    if (child.isMesh) {
+                        meshes.push(child);
+                    }
+                });
+
+                log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'info');
+                log(`FOUND ${meshes.length} MESH(ES):`, 'success');
+                log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'info');
+
+                if (meshes.length === 0) {
+                    log('❌ NO MESHES FOUND IN FBX!', 'error');
+                    log('The FBX file loaded but contains no mesh geometry', 'error');
+                } else {
+                    meshes.forEach((mesh, index) => {
+                        const geom = mesh.geometry;
+                        const vertices = geom.attributes.position.count;
+                        const hasUVs = !!geom.attributes.uv;
+                        const bbox = new THREE.Box3().setFromObject(mesh);
+                        const size = bbox.getSize(new THREE.Vector3());
+
+                        log(``, 'info');
+                        log(`Mesh ${index + 1}:`, 'success');
+                        log(`  Name: "${mesh.name}"`, 'info');
+                        log(`  Vertices: ${vertices}`, 'info');
+                        log(`  Size: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}`, 'info');
+                        log(`  Has UVs: ${hasUVs ? '✓ YES' : '✗ NO'}`, hasUVs ? 'success' : 'error');
+                        log(`  Material: ${mesh.material.type}`, 'info');
+
+                        if (hasUVs) {
+                            const uvCount = geom.attributes.uv.count;
+                            log(`  UV count: ${uvCount}`, 'info');
+                        }
+                    });
+
+                    // Center and fit camera
+                    const box = new THREE.Box3().setFromObject(object);
+                    const center = box.getCenter(new THREE.Vector3());
+                    object.position.sub(center);
+
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const fov = camera.fov * (Math.PI / 180);
+                    let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                    cameraZ *= 1.5;
+
+                    camera.position.set(cameraZ, cameraZ, cameraZ);
+                    camera.lookAt(0, 0, 0);
+                    controls.update();
+
+                    log(``, 'info');
+                    log(`✓ Object centered and camera positioned`, 'success');
+                }
+            },
+
+            // Progress callback
+            function (xhr) {
+                const percent = (xhr.loaded / xhr.total * 100).toFixed(2);
+                log(`Loading... ${percent}%`, 'warning');
+            },
+
+            // Error callback
+            function (error) {
+                log('❌❌❌ ERROR LOADING FBX! ❌❌❌', 'error');
+                log(`Error type: ${error.constructor.name}`, 'error');
+                log(`Error message: ${error.message}`, 'error');
+                log(`Error stack: ${error.stack}`, 'error');
+
+                // Try to load the original file as fallback
+                log('', 'info');
+                log('📦 Trying fallback: /Main_Monitor_1.fbx', 'warning');
+
+                loader.load(
+                    '/Main_Monitor_1.fbx',
+                    function(obj) {
+                        log('✓ Fallback file loaded successfully!', 'success');
+                        scene.add(obj);
+
+                        const meshes = [];
+                        obj.traverse((child) => {
+                            if (child.isMesh) meshes.push(child);
+                        });
+                        log(`Fallback has ${meshes.length} meshes`, 'info');
+                    },
+                    function(xhr) {
+                        const percent = (xhr.loaded / xhr.total * 100).toFixed(2);
+                        log(`Fallback loading... ${percent}%`, 'warning');
+                    },
+                    function(err) {
+                        log(`❌ Fallback also failed: ${err.message}`, 'error');
+                    }
+                );
+            }
+        );
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        log('✓ Animation loop started', 'success');
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
+        log('Waiting for FBX to load...', 'warning');
+    </script>
+</body>
+</html>

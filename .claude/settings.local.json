@@ -4,7 +4,14 @@
       "Bash(npm install)",
       "Bash(npm run dev)",
       "Bash(ls:*)",
-      "Bash(Get-Content \"public/CPUAnimation (1).fbx\" -TotalCount 1 -ErrorAction SilentlyContinue)"
+      "Bash(Get-Content \"public/CPUAnimation (1).fbx\" -TotalCount 1 -ErrorAction SilentlyContinue)",
+      "Bash(npm install:*)",
+      "Bash(pkill:*)",
+      "Bash(open:*)",
+      "Bash(lsof:*)",
+      "Bash(node --version:*)",
+      "Bash(node -c:*)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,16 +1,15 @@
 import * as THREE from 'three';
 import Experience from '../Experience.js';
-import { logAllMeshes } from '../Utils/DebugMeshes.js';
 
 export default class MainMonitorScreen {
   constructor(monitorModel) {
     this.experience = new Experience();
     this.scene = this.experience.scene;
-    this.renderer = this.experience.renderer;
-    this.raycaster = this.experience.raycaster;
     this.camera = this.experience.camera;
     this.monitorModel = monitorModel;
     this.screenMesh = null;
+    this.canvas = null;
+    this.canvasTexture = null;
     this.isZoomedIn = false;
 
     this.findScreenMesh();
@@ -19,40 +18,25 @@ export default class MainMonitorScreen {
   }
 
   findScreenMesh() {
-    // Log ALL meshes to help find the screen mesh
     console.log('🔍 Searching for screen mesh in Main Monitor...');
-    logAllMeshes(this.monitorModel, 'Main_Monitor_1');
 
-    // Find the polySurface1077 mesh which is the screen
+    // Look for Main_Monitor - the curved screen (in UV file)
+    // or polySurface1077 (in original file)
     this.monitorModel.traverse((child) => {
-      if (child.isMesh && child.name === 'polySurface1077') {
-        this.screenMesh = child;
+      if (child.isMesh && (child.name === 'Main_Monitor' || child.name === 'polySurface1077')) {
         console.log('✓ Found Main Monitor screen mesh:', child.name);
+        this.screenMesh = child;
       }
     });
 
     if (!this.screenMesh) {
-      console.warn('⚠ Screen mesh polySurface1077 not found in Main Monitor!');
-      console.warn('⚠ Check the console output above to find the correct mesh name');
-
-      // Try to find the largest mesh as a fallback
-      let largestMesh = null;
-      let largestVertexCount = 0;
-
+      console.error('❌ Screen mesh not found in Main Monitor!');
+      console.log('Available meshes:');
       this.monitorModel.traverse((child) => {
         if (child.isMesh) {
-          const vertexCount = child.geometry.attributes.position.count;
-          if (vertexCount > largestVertexCount) {
-            largestVertexCount = vertexCount;
-            largestMesh = child;
-          }
+          console.log(`  - ${child.name}`);
         }
       });
-
-      if (largestMesh) {
-        console.log(`📍 Using largest mesh as fallback: ${largestMesh.name} (${largestVertexCount} vertices)`);
-        this.screenMesh = largestMesh;
-      }
     }
   }
 
@@ -62,124 +46,83 @@ export default class MainMonitorScreen {
       return;
     }
 
-    console.log('🎨 Setting up canvas texture for curved monitor screen...');
+    console.log('🎨 Setting up Canvas Texture for Main Monitor curved screen...');
+    console.log('📐 Screen mesh geometry:', this.screenMesh.geometry);
+    console.log('📐 Has UVs:', !!this.screenMesh.geometry.attributes.uv);
 
-    // Create a high-resolution canvas for the screen content
-    const canvas = document.createElement('canvas');
-    canvas.width = 1920;
-    canvas.height = 1080;
-    const ctx = canvas.getContext('2d');
+    // Create canvas with proper UV unwrapping
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = 1024;
+    this.canvas.height = 512;
 
-    // Draw gradient background (Windows 11 style - same as viewer.html)
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, '#1e3a8a');
-    gradient.addColorStop(0.5, '#2563eb');
-    gradient.addColorStop(1, '#3b82f6');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const ctx = this.canvas.getContext('2d');
 
-    // Add Windows logo in center
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const logoSize = 400;
+    // Flip canvas horizontally to fix mirrored text
+    ctx.translate(this.canvas.width, 0);
+    ctx.scale(-1, 1);
 
-    // Windows 4-square logo
-    ctx.fillRect(centerX - logoSize/2 - 20, centerY - logoSize/2 - 20, logoSize/2 - 10, logoSize/2 - 10);
-    ctx.fillRect(centerX + 20, centerY - logoSize/2 - 20, logoSize/2 - 10, logoSize/2 - 10);
-    ctx.fillRect(centerX - logoSize/2 - 20, centerY + 20, logoSize/2 - 10, logoSize/2 - 10);
-    ctx.fillRect(centerX + 20, centerY + 20, logoSize/2 - 10, logoSize/2 - 10);
+    // Fill entire canvas with dark background
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Add welcome text
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 100px Arial';
+    // Fill with dark background
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Visible area: Cell 3 (yellow) - middle row, left column
+    // Cell 3 position: X: 0-341, Y: 171-341
+    // Center of cell 3: X: 170, Y: 256
+    const cellW = this.canvas.width / 3;
+    const cellH = this.canvas.height / 3;
+
+    const visibleX = cellW / 2; // Center of left column (170)
+    const visibleY = cellH + (cellH / 2); // Center of middle row (256)
+
     ctx.textAlign = 'center';
-    ctx.fillText('Welcome to My Portfolio', canvas.width / 2, 200);
+    ctx.textBaseline = 'middle';
 
-    ctx.font = '50px Arial';
-    ctx.fillText('Full Stack Developer', canvas.width / 2, 900);
+    // Portfolio content in cell 3 (yellow area) - smaller to fit
+    ctx.fillStyle = '#ff4757';
+    ctx.font = 'bold 28px Arial';
+    ctx.fillText('PORTFOLIO', visibleX, visibleY - 45);
 
-    // Taskbar at bottom
-    const taskbarHeight = 72;
-    ctx.fillStyle = 'rgba(20, 20, 20, 0.8)';
-    ctx.fillRect(0, canvas.height - taskbarHeight, canvas.width, taskbarHeight);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText('3D Experience', visibleX, visibleY);
 
-    // Time
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText('12:00 PM', canvas.width - 30, canvas.height - 38);
+    ctx.fillStyle = '#2ed573';
+    ctx.font = '18px Arial';
+    ctx.fillText('Click to Explore', visibleX, visibleY + 40);
 
-    console.log('✓ Canvas drawing complete');
+    // Create Three.js texture from canvas
+    this.canvasTexture = new THREE.CanvasTexture(this.canvas);
+    this.canvasTexture.needsUpdate = true;
 
-    // Create texture from canvas
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
+    // Flip texture vertically since it's upside down
+    this.canvasTexture.flipY = true; // Flip to correct orientation
+    this.canvasTexture.wrapS = THREE.ClampToEdgeWrapping;
+    this.canvasTexture.wrapT = THREE.ClampToEdgeWrapping;
 
-    // Set anisotropy if renderer is available
-    if (this.renderer && this.renderer.instance) {
-      texture.anisotropy = this.renderer.instance.capabilities.getMaxAnisotropy();
-      console.log('✓ Texture anisotropy set:', texture.anisotropy);
-    } else {
-      console.warn('⚠ Renderer not available yet, skipping anisotropy');
-    }
+    // Store original material for reference
+    console.log('📐 Original material:', this.screenMesh.material);
 
-    console.log('✓ Texture created from canvas');
-
-    // Store old material for debugging
-    const oldMaterial = this.screenMesh.material;
-    console.log('Old material type:', oldMaterial.type);
-    console.log('Old material color:', oldMaterial.color);
-
-    // Apply texture to the CURVED screen mesh
-    // Using MeshBasicMaterial for maximum brightness (not affected by lights)
+    // Apply texture to screen mesh with emissive for visibility
     this.screenMesh.material = new THREE.MeshBasicMaterial({
-      map: texture,
+      map: this.canvasTexture,
       side: THREE.DoubleSide,
-      toneMapped: false
     });
 
-    console.log('✓ New material applied to screen mesh:', this.screenMesh.name);
-    console.log('✓ New material type:', this.screenMesh.material.type);
-    console.log('✓ Material has map:', !!this.screenMesh.material.map);
-    console.log('✓ Texture width x height:', texture.image.width, 'x', texture.image.height);
+    console.log('✓ Canvas texture applied!');
 
-    // Dispose old material
-    if (oldMaterial.dispose) {
-      oldMaterial.dispose();
-    }
-
-    // Make screen mesh visible
-    this.screenMesh.visible = true;
-
-    // Force material update
-    this.screenMesh.material.needsUpdate = true;
-
-    // Store reference globally for debugging
-    window.mainScreenMesh = this.screenMesh;
-    window.mainScreenTexture = texture;
-    console.log('💡 Debug tip: Access screen mesh via window.mainScreenMesh');
-    console.log('💡 Debug tip: Access texture via window.mainScreenTexture');
-
-    console.log('✓ Main Monitor canvas screen setup complete!');
-  }
-
-  // Test method to change material to solid color (for debugging)
-  testSolidColor(color = 0xff0000) {
-    if (!this.screenMesh) return;
-
-    this.screenMesh.material = new THREE.MeshBasicMaterial({
-      color: color,
-      side: THREE.DoubleSide
-    });
-    console.log('🎨 Changed to solid color:', color);
+    console.log('✓ Canvas texture applied to curved screen!');
+    console.log('✓ Texture size:', this.canvas.width, 'x', this.canvas.height);
   }
 
   setupInteraction() {
     if (!this.monitorModel) return;
 
     // Register click handler for the entire main monitor model
-    this.raycaster.registerClickHandler('Main_Monitor_1', () => {
+    this.experience.raycaster.registerClickHandler('Main_Monitor_1', () => {
       this.toggleZoom();
     });
 
@@ -202,17 +145,19 @@ export default class MainMonitorScreen {
     }
   }
 
-  // Optional: Update canvas content dynamically
-  updateContent(updateFunction) {
-    if (!this.screenMesh || !this.screenMesh.material.map) return;
+  // Method to update canvas content (can be called to change what's displayed)
+  updateContent(drawFunction) {
+    if (!this.canvas) return;
 
-    const canvas = this.screenMesh.material.map.image;
-    const ctx = canvas.getContext('2d');
+    const ctx = this.canvas.getContext('2d');
 
-    if (updateFunction) {
-      updateFunction(ctx, canvas);
-    }
+    // Clear canvas
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    this.screenMesh.material.map.needsUpdate = true;
+    // Call custom draw function
+    drawFunction(ctx, this.canvas.width, this.canvas.height);
+
+    // Update texture
+    this.canvasTexture.needsUpdate = true;
   }
 }
